@@ -1,0 +1,10 @@
+{
+            "appointmentID": 7,
+            "clinicName": "Singapore Hospital International",
+            "datetime": "2022-10-15 14:19:14",
+            "name": "Edward Toh",
+            "email": "doctorasap2023@gmail.com",
+            "address": "152 HILLVIEW ROAD",
+            "dob": "1992-04-02",
+            "nric": "T0214451P"
+        }

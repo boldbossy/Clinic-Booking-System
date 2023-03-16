@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
+
+
+    <title>Bookstore</title>
+
+
+    <link rel="stylesheet" href="">
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!-- Bootstrap libraries -->
+    <meta name="viewport" 
+        content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+    <!-- Bootstrap CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css'
+       rel='stylesheet'
+       integrity='sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC'
+       crossorigin='anonymous'>
+
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script
+       src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+
+</head>
+
+
+<body>
+    <h1>Clinic Booking</h1>
+	<form>
+        <label for="clinicID">Clinic ID:</label>
+        <input type="text" id="clinicID" name="clinicID"><br><br>
+
+        <label for="nric">NRIC:</label>
+        <input type="text" id="nric" name="nric"><br><br>
+
+        <label for="date">Date:</label>
+        <input type="date" id="date" name="date"><br><br>
+        
+        <label for="time">Time:</label>
+        <select id="time" name="time">
+            <option value="" selected disabled>Select a time slot</option>
+        </select><br><br>
+
+        <input type="submit" value="Create Appointment" onclick="createAppointment(); return false;">
+    </form>
+
+    <!-- Bootstrap Javascript; at the end of the <body> -->
+    <script 
+       src='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js'
+       integrity='sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
+       crossorigin='anonymous'>
+        function createTimeSlots() {
+            const openingTime = 8;
+            const closingTime = 17;
+            const timeSlotDuration = 10; // in minutes
+
+            const timeSelect = document.getElementById("time");
+
+            for (let i = openingTime; i <= closingTime; i++) {
+                for (let j = 0; j < 60; j += timeSlotDuration) {
+                    let hour = i.toString().padStart(2, '0');
+                    let minute = j.toString().padStart(2, '0');
+                    let timeSlot = `${hour}:${minute}:00`;
+                    let option = document.createElement("option");
+                    option.value = timeSlot;
+                    option.text = timeSlot;
+                    timeSelect.appendChild(option);
+                }
+            }
+        }
+
+        function createAppointment() {
+            const clinicID = document.getElementById("clinicID").value;
+            const nric = document.getElementById("nric").value;
+            const date = document.getElementById("date").value;
+            const time = document.getElementById("time").value;
+
+            if (!clinicID || !nric || !date || !time) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            const data = {
+                clinicID: clinicID,
+                nric: nric,
+                date: date,
+                time: time
+            };
+
+            fetch("/appointment", {
+                method: "POST",
+                body: JSON.stringify(data),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert("Appointment created successfully!");
+                    location.reload();
+                } else {
+                    response.json()
+                    .then(data => {
+                        alert(data.error);
+                    });
+                }
+            })
+            .catch(error => {
+                alert("An error occurred. Please try again later.");
+                console.error(error);
+            });
+        }
+
+        window.onload = function() {
+            createTimeSlots();
+        };
+    </scrip>
+</body>
+
+
+</html>
+
+

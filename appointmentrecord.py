@@ -22,8 +22,7 @@ class Appointment(db.Model):
     dob = db.Column(db.Date, nullable=False)
     datetime = db.Column(db.DateTime, nullable=False)
 
-    def __init__(self, appointmentID, clinicName, nric, email, name, address, dob, datetime):
-        self.appointmentID = appointmentID
+    def __init__(self, clinicName, nric, email, name, address, dob, datetime):
         self.clinicName = clinicName
         self.nric = nric
         self.email = email
@@ -72,6 +71,23 @@ def find_by_appointment(appointmentID):
         }
     ), 404
 
+@app.route('/appointment/<string:nric>', methods=['GET'])
+def find_by_nric(nric):
+    appointment = Appointment.query.filter_by(nric=nric).first()
+    if appointment:
+        return jsonify(
+            {
+                "code": 200,
+                "data": appointment.json()
+            }
+        )
+    return jsonify(
+        {
+            "code": 404,
+            "message": f"Appointment under customer {nric} not found."
+        }
+    ), 404
+
 @app.route("/appointment/<string:clinicName>")
 def find_by_clinicName(clinicName):
     appointment_list = Appointment.query.filter_by(clinicName=clinicName).all() # .first returns 1 book instead of a list of all the books
@@ -89,21 +105,22 @@ def find_by_clinicName(clinicName):
         }
     ), 404
 
-@app.route('/appointment/<int:appointmentID>/<string:clinicName>', methods=['POST'])
-def create_appointment(appointmentID, clinicName):
+@app.route('/appointment/<string:clinicName>', methods=['POST'])
+def create_appointment(clinicName):
     
     data = request.get_json()
 
     # IF APPOINTMENT ALREADY EXISTS
-    if Appointment.query.filter_by(appointmentID=appointmentID, clinicName=clinicName).first():
-        return jsonify({
-            "code": 400,
-            "data": {
-                "appointmentID": appointmentID,
-                "clinicName": clinicName
-            },
-            "message": "Appointment already exists."
-        }), 400
+    # appointmentID = Appointment(appointmentID=data['appointmentID'])
+    # if Appointment.query.filter_by(clinicName=clinicName).first():
+    #     return jsonify({
+    #         "code": 400,
+    #         "data": {
+    #             "appointmentID": appointmentID,
+    #             "clinicName": clinicName
+    #         },
+    #         "message": "Appointment already exists."
+    #     }), 400
     
     # Check for overlapping appointments
     posted_datetime = datetime.strptime(data['datetime'], '%Y-%m-%d %H:%M:%S')
@@ -128,7 +145,7 @@ def create_appointment(appointmentID, clinicName):
 
         
     appointment = Appointment(
-        appointmentID=appointmentID,
+        # appointmentID=data['appointmentID'],
         clinicName=clinicName,
         nric=data['nric'],
         email=data['email'],
@@ -141,12 +158,13 @@ def create_appointment(appointmentID, clinicName):
     try:
         db.session.add(appointment)
         db.session.commit()
+        # app.logger.info(appointment.appointmentID)
 
     except:
         return jsonify({
             "code": 500,
             "data": {
-                "appointmentID": appointmentID,
+                "appointmentID": appointment.appointmentID,
                 "clinicName": clinicName
             },
             "message": "An error occurred creating the appointment."
@@ -154,12 +172,21 @@ def create_appointment(appointmentID, clinicName):
     
     return jsonify({
         "code": 201,
-        "data": appointment.json()
+        "data": {
+            "appointmentID": appointment.appointmentID,
+            "clinicName": appointment.clinicName,
+            "nric": appointment.nric,
+            "email": appointment.email,
+            "name": appointment.name,
+            "address": appointment.address,
+            "dob": appointment.dob,
+            "datetime": appointment.datetime.strftime('%Y-%m-%d %H:%M:%S')
+        }
     }), 201
 
-@app.route('/appointment/<int:appointmentID>/<string:clinicName>', methods=['DELETE'])
-def delete_appointment(appointmentID, clinicName):
-    appointment = Appointment.query.filter_by(appointmentID=appointmentID, clinicName=clinicName).first()
+@app.route('/appointment/<int:appointmentID>', methods=['DELETE'])
+def delete_appointment(appointmentID):
+    appointment = Appointment.query.filter_by(appointmentID=appointmentID).first()
     if not appointment:
         return jsonify({
             "code": 404,

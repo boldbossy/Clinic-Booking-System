@@ -13,24 +13,21 @@ import json
 app = Flask(__name__)
 CORS(app)
 
-appointment_URL = "http://localhost:5000/appointment"
-# order_URL = "http://localhost:5001/order"
-shipping_record_URL = "http://localhost:5002/shipping_record"
-#activity_log_URL = "http://localhost:5003/activity_log"
-#error_URL = "http://localhost:5004/error"
+appointmentrecord_URL = "http://localhost:5000/appointment"
+notification_URL = "http://localhost:5000/notification"
 
 
-@app.route("/place_order", methods=['POST'])
-def place_order():
+@app.route("/book_appointment", methods=['POST'])
+def book_appointment():
     # Simple check of input format and data of the request are JSON
     if request.is_json:
         try:
-            order = request.get_json()
-            print("\nReceived an order in JSON:", order)
+            appointment = request.get_json()
+            print("\nReceived an appointment record in JSON:", appointment)
 
             # do the actual work
             # 1. Send order info {cart items}
-            result = processPlaceOrder(order)
+            result = processBookAppointment(appointment)
             print('\n------------------------')
             print('\nresult: ', result)
             return jsonify(result), result["code"]
@@ -44,7 +41,7 @@ def place_order():
 
             return jsonify({
                 "code": 500,
-                "message": "place_order.py internal error: " + ex_str
+                "message": "book_appointment.py internal error: " + ex_str
             }), 500
 
     # if reached here, not a JSON request.
@@ -54,39 +51,39 @@ def place_order():
     }), 400
 
 
-def processPlaceOrder(order):
+def processBookAppointment(appointment):
     # 2. Send the order info {cart items}
     # Invoke the order microservice
     print('\n-----Invoking order microservice-----')
-    order_result = invoke_http(order_URL, method='POST', json=order)
-    print('order_result:', order_result)
+    appointment_result = invoke_http(appointmentrecord_URL, method='POST', json=appointment)
+    print('appointment_result:', appointment_result)
   
 
     # Check the order result; if a failure, send it to the error microservice.
-    code = order_result["code"]
-    message = json.dumps(order_result)
+    code = appointment_result["code"]
+    message = json.dumps(appointment_result)
 
     if code not in range(200, 300):
         # Inform the error microservice
         #print('\n\n-----Invoking error microservice as order fails-----')
-        print('\n\n-----Publishing the (order error) message with routing_key=order.error-----')
+        print('\n\n-----Publishing the (appointment error) message with routing_key=order.error-----')
 
         # invoke_http(error_URL, method="POST", json=order_result)
-        amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="order.error", 
+        amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="appointment.error", 
             body=message, properties=pika.BasicProperties(delivery_mode = 2)) 
         # make message persistent within the matching queues until it is received by some receiver 
         # (the matching queues have to exist and be durable and bound to the exchange)
 
         # - reply from the invocation is not used;
         # continue even if this invocation fails        
-        print("\nOrder status ({:d}) published to the RabbitMQ Exchange:".format(
-            code), order_result)
+        print("\nAppointment status ({:d}) published to the RabbitMQ Exchange:".format(
+            code), appointment_result)
 
         # 7. Return error
         return {
             "code": 500,
-            "data": {"order_result": order_result},
-            "message": "Order creation failure sent for error handling."
+            "data": {"appointment_result": appointment_result},
+            "message": "Appointment creation failure sent for error handling."
         }
 
     # Notice that we are publishing to "Activity Log" only when there is no error in order creation.
@@ -98,56 +95,29 @@ def processPlaceOrder(order):
         # 4. Record new order
         # record the activity log anyway
         #print('\n\n-----Invoking activity_log microservice-----')
-        print('\n\n-----Publishing the (order info) message with routing_key=order.info-----')        
+        print('\n\n-----Publishing the (appointment info) message with routing_key=order.info-----')        
 
         # invoke_http(activity_log_URL, method="POST", json=order_result)            
-        amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="order.info", 
+        amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="appointment.info", 
             body=message)
     
-    print("\nOrder published to RabbitMQ Exchange.\n")
+    print("\nAppointment published to RabbitMQ Exchange.\n")
     # - reply from the invocation is not used;
     # continue even if this invocation fails
     
-    # 5. Send new order to shipping
-    # Invoke the shipping record microservice
-    print('\n\n-----Invoking shipping_record microservice-----')    
+    # # 5. Send new order to shipping
+    # # Invoke the shipping record microservice
+    # print('\n\n-----Invoking shipping_record microservice-----')    
     
-    shipping_result = invoke_http(
-        shipping_record_URL, method="POST", json=order_result['data'])
-    print("shipping_result:", shipping_result, '\n')
+    # shipping_result = invoke_http(
+    #     shipping_record_URL, method="POST", json=order_result['data'])
+    # print("shipping_result:", shipping_result, '\n')
 
-    # Check the shipping result;
-    # if a failure, send it to the error microservice.
-    code = shipping_result["code"]
-    if code not in range(200, 300):
-        # Inform the error microservice
-        #print('\n\n-----Invoking error microservice as shipping fails-----')
-        print('\n\n-----Publishing the (shipping error) message with routing_key=shipping.error-----')
-
-        # invoke_http(error_URL, method="POST", json=shipping_result)
-        message = json.dumps(shipping_result)
-        amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="shipping.error", 
-            body=message, properties=pika.BasicProperties(delivery_mode = 2))
-
-        print("\nShipping status ({:d}) published to the RabbitMQ Exchange:".format(
-            code), shipping_result)
-
-        # 7. Return error
-        return {
-            "code": 400,
-            "data": {
-                "order_result": order_result,
-                "shipping_result": shipping_result
-            },
-            "message": "Simulated shipping record error sent for error handling."
-        }
-
-    # 7. Return created order, shipping record
     return {
         "code": 201,
         "data": {
-            "order_result": order_result,
-            "shipping_result": shipping_result
+            "order_result": appointment_result,
+            "shipping_result": appointment_result
         }
     }
 

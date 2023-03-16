@@ -1,0 +1,186 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
+from os import environ
+
+app = Flask('__name__')
+app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('dbURL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+
+class Appointment(db.Model):
+    __tablename__ = 'appointment'
+
+    appointmentID = db.Column(db.Integer, autoincrement=True, primary_key=True, nullable=False)
+    clinicName = db.Column(db.String(64), primary_key=True, nullable=False)
+    nric = db.Column(db.String(9), nullable=False)
+    email = db.Column(db.String(64), nullable=False)
+    name = db.Column(db.String(64), nullable=False)
+    address = db.Column(db.String(200), nullable=False)
+    dob = db.Column(db.Date, nullable=False)
+    datetime = db.Column(db.DateTime, nullable=False)
+
+    def __init__(self, appointmentID, clinicName, nric, email, name, address, dob, datetime):
+        self.appointmentID = appointmentID
+        self.clinicName = clinicName
+        self.nric = nric
+        self.email = email
+        self.name = name
+        self.address = address
+        self.dob = dob
+        self.datetime = datetime
+
+    def json(self):
+        return {"appointmentID": self.appointmentID, "clinicName": self.clinicName, "nric": self.nric, "email": self.email, "name": self.name, "address": self.address, "dob": self.dob, "datetime": self.datetime}
+    
+
+@app.route("/appointment")
+def get_all_appointments():
+    appointment_list = Appointment.query.all()
+    if len(appointment_list):
+        return jsonify(
+            {
+                "code": 200,
+                "data": {
+                    "appointments": [appointment.json() for appointment in appointment_list]
+                }
+            }
+        )
+    return jsonify(
+        {
+            "code": 404,
+            "message": "There are no appointments."
+        }
+    ), 404
+
+@app.route('/appointment/<int:appointmentID>', methods=['GET'])
+def find_by_appointment(appointmentID):
+    appointment = Appointment.query.filter_by(appointmentID=appointmentID).first()
+    if appointment:
+        return jsonify(
+            {
+                "code": 200,
+                "data": appointment.json()
+            }
+        )
+    return jsonify(
+        {
+            "code": 404,
+            "message": "Appointment not found."
+        }
+    ), 404
+
+@app.route("/appointment/<string:clinicName>")
+def find_by_clinicName(clinicName):
+    appointment_list = Appointment.query.filter_by(clinicName=clinicName).all() # .first returns 1 book instead of a list of all the books
+    if appointment_list:
+        return jsonify(
+            {
+                "code": 200, # even if you change this to any other number e.g. 216, the status will still be 200 OK, even though it will print "code": 216
+                "data": [appointment.json() for appointment in appointment_list]
+            }
+        )
+    return jsonify(
+        {
+            "code": 404,
+            "message": "Appointment in clinic chosen not found."
+        }
+    ), 404
+
+@app.route('/appointment/<int:appointmentID>/<string:clinicName>', methods=['POST'])
+def create_appointment(appointmentID, clinicName):
+    
+    data = request.get_json()
+
+    # IF APPOINTMENT ALREADY EXISTS
+    if Appointment.query.filter_by(appointmentID=appointmentID, clinicName=clinicName).first():
+        return jsonify({
+            "code": 400,
+            "data": {
+                "appointmentID": appointmentID,
+                "clinicName": clinicName
+            },
+            "message": "Appointment already exists."
+        }), 400
+    
+    # Check for overlapping appointments
+    posted_datetime = datetime.strptime(data['datetime'], '%Y-%m-%d %H:%M:%S')
+    existing_appointments = Appointment.query.filter_by(clinicName=clinicName).all()
+    for appt in existing_appointments:
+        if appt.datetime <= posted_datetime < appt.datetime + timedelta(minutes=15):
+            return jsonify({
+                "code": 400,
+                "message": "There is already an existing appointment at this time."
+            }), 400
+        
+    # CHECK FOR MULTIPLE APPOINTMENTS ON SAME DAY FOR SAME CUSTOMER
+    nric = data['nric']
+    appt_date = posted_datetime.date()
+    existing_appts = Appointment.query.filter_by(nric=nric).all()
+    for appt in existing_appts:
+        if appt.datetime.date() == appt_date:
+            return jsonify({
+                "code": 400,
+                "message": "You already have an appointment on this date."
+            }), 400
+
+        
+    appointment = Appointment(
+        appointmentID=appointmentID,
+        clinicName=clinicName,
+        nric=data['nric'],
+        email=data['email'],
+        name=data['name'],
+        address=data['address'],
+        dob=datetime.strptime(data['dob'], '%Y-%m-%d'),
+        datetime=datetime.strptime(data['datetime'], '%Y-%m-%d %H:%M:%S')
+    )
+
+    try:
+        db.session.add(appointment)
+        db.session.commit()
+
+    except:
+        return jsonify({
+            "code": 500,
+            "data": {
+                "appointmentID": appointmentID,
+                "clinicName": clinicName
+            },
+            "message": "An error occurred creating the appointment."
+        }), 500
+    
+    return jsonify({
+        "code": 201,
+        "data": appointment.json()
+    }), 201
+
+@app.route('/appointment/<int:appointmentID>/<string:clinicName>', methods=['DELETE'])
+def delete_appointment(appointmentID, clinicName):
+    appointment = Appointment.query.filter_by(appointmentID=appointmentID, clinicName=clinicName).first()
+    if not appointment:
+        return jsonify({
+            "code": 404,
+            "message": "Appointment not found."
+        }), 404
+
+    try:
+        db.session.delete(appointment)
+        db.session.commit()
+        return jsonify({
+            "code": 200,
+            "message": "Appointment deleted successfully."
+        }), 200
+
+    except:
+        return jsonify({
+            "code": 500,
+            "message": "An error occurred deleting the appointment."
+        }), 500
+
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

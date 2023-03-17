@@ -13,8 +13,8 @@ import json
 app = Flask(__name__)
 CORS(app)
 
-appointmentrecord_URL = "http://localhost:5000/appointment"
-notification_URL = "http://localhost:5000/notification"
+appointmentrecord_URL = "http://127.0.0.1:5000/appointment"
+notification_URL = "http://127.0.0.1:5000/notification"
 
 
 @app.route("/book_appointment", methods=['POST'])
@@ -66,10 +66,10 @@ def processBookAppointment(appointment):
     if code not in range(200, 300):
         # Inform the error microservice
         #print('\n\n-----Invoking error microservice as order fails-----')
-        print('\n\n-----Publishing the (appointment error) message with routing_key=order.error-----')
+        print('\n\n-----Publishing the (appointment error) message with routing_key=booking.error-----')
 
         # invoke_http(error_URL, method="POST", json=order_result)
-        amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="appointment.notification", 
+        amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="booking.error", 
             body=message, properties=pika.BasicProperties(delivery_mode = 2)) 
         # make message persistent within the matching queues until it is received by some receiver 
         # (the matching queues have to exist and be durable and bound to the exchange)
@@ -92,10 +92,10 @@ def processBookAppointment(appointment):
     # and a message sent to “Error” queue can be received by “Activity Log” too.
 
     else:
-        # 4. Record new order
+        # 4. Record new appointment
         # record the activity log anyway
         #print('\n\n-----Invoking activity_log microservice-----')
-        print('\n\n-----Publishing the (appointment info) message with routing_key=order.info-----')        
+        print('\n\n-----Publishing the (appointment info) message with routing_key=appointment.info-----')        
 
         # invoke_http(activity_log_URL, method="POST", json=order_result)            
         amqp_setup.channel.basic_publish(exchange=amqp_setup.exchangename, routing_key="appointment.info", 

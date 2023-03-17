@@ -8,11 +8,13 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+# from app import views, models
+import requests
 
 import amqp_setup
 import pika
 
-monitorBindingKey='*.notification'
+monitorBindingKey='#'
 
 # app = Flask(__name__)
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root@localhost:3306/notification'
@@ -32,7 +34,7 @@ def receiveNotification():
     amqp_setup.channel.start_consuming() # an implicit loop waiting to receive messages; 
     #it doesn't exit by default. Use Ctrl+C in the command window to terminate it.
 
-def handle_notification():
+def handle_notification(appointmentID, status, email):
     content = request.get_json()
     appointmentID = content.get('appointmentID')
     status = content.get('status')
@@ -62,6 +64,7 @@ def handle_notification():
 #     return channel
 
 def callback(channel, method, properties, body):
+    # with app.app_context():
     data = json.loads(body)
     appointmentID = data.get('appointmentID')
     status = data.get('status')
@@ -71,6 +74,9 @@ def callback(channel, method, properties, body):
     handle_notification(appointmentID, status, email)
     print()
 
+def processNotification(notification):
+    print("Recording a notification:")
+    print(notification)
 
 # channel = connect_to_rabbitmq()
 # channel.basic_qos(prefetch_count=1)

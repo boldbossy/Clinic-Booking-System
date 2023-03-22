@@ -13,7 +13,7 @@ import json
 app = Flask(__name__)
 CORS(app)
 
-appointmentrecord_URL = "http://127.0.0.1:5000/appointment"
+appointmentrecord_URL = f"http://127.0.0.1:5000/appointment/<string:clinicName>"
 notification_URL = "http://127.0.0.1:5000/notification"
 
 
@@ -27,6 +27,7 @@ def book_appointment():
 
             # do the actual work
             # 1. Send order info {cart items}
+            
             result = processBookAppointment(appointment)
             print('\n------------------------')
             print('\nresult: ', result)
@@ -55,6 +56,8 @@ def processBookAppointment(appointment):
     # 2. Send the order info {cart items}
     # Invoke the order microservice
     print('\n-----Invoking order microservice-----')
+    clinicName = appointment["clinicName"]
+    appointmentrecord_URL = f"http://127.0.0.1:5000/appointment/{clinicName}"
     appointment_result = invoke_http(appointmentrecord_URL, method='POST', json=appointment)
     print('appointment_result:', appointment_result)
   
@@ -116,8 +119,7 @@ def processBookAppointment(appointment):
     return {
         "code": 201,
         "data": {
-            "order_result": appointment_result,
-            "shipping_result": appointment_result
+            "appointment_result": appointment_result,
         }
     }
 

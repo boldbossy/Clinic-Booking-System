@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root@localhost:3308/appointment'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root@localhost:3306/appointment'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -16,23 +16,23 @@ class Appointment(db.Model):
     appointmentID = db.Column(db.Integer, autoincrement=True, primary_key=True, nullable=False)
     clinicName = db.Column(db.String(64), primary_key=True, nullable=False)
     nric = db.Column(db.String(9), nullable=False)
-    email = db.Column(db.String(64), nullable=False)
+    mobile = db.Column(db.String(64), nullable=False)
     name = db.Column(db.String(64), nullable=False)
     address = db.Column(db.String(200), nullable=False)
     dob = db.Column(db.Date, nullable=False)
     datetime = db.Column(db.DateTime, nullable=False)
 
-    def __init__(self, clinicName, nric, email, name, address, dob, datetime):
+    def __init__(self, clinicName, nric, mobile, name, address, dob, datetime):
         self.clinicName = clinicName
         self.nric = nric
-        self.email = email
+        self.mobile = mobile
         self.name = name
         self.address = address
         self.dob = dob
         self.datetime = datetime
 
     def json(self):
-        return {"appointmentID": self.appointmentID, "clinicName": self.clinicName, "nric": self.nric, "email": self.email, "name": self.name, "address": self.address, "dob": datetime.strftime(self.dob, '%Y-%m-%d'), "datetime": self.datetime}
+        return {"appointmentID": self.appointmentID, "clinicName": self.clinicName, "nric": self.nric, "mobile": self.mobile, "name": self.name, "address": self.address, "dob": datetime.strftime(self.dob, '%Y-%m-%d'), "datetime": self.datetime}
     
 
 @app.route("/appointment")
@@ -110,18 +110,6 @@ def create_appointment(clinicName):
     
     data = request.get_json()
 
-    # IF APPOINTMENT ALREADY EXISTS
-    # appointmentID = Appointment(appointmentID=data['appointmentID'])
-    # if Appointment.query.filter_by(clinicName=clinicName).first():
-    #     return jsonify({
-    #         "code": 400,
-    #         "data": {
-    #             "appointmentID": appointmentID,
-    #             "clinicName": clinicName
-    #         },
-    #         "message": "Appointment already exists."
-    #     }), 400
-    
     # Check for overlapping appointments
     posted_datetime = datetime.strptime(data['datetime'], '%Y-%m-%d %H:%M:%S')
     existing_appointments = Appointment.query.filter_by(clinicName=clinicName).all()
@@ -148,7 +136,7 @@ def create_appointment(clinicName):
         # appointmentID=data['appointmentID'],
         clinicName=clinicName,
         nric=data['nric'],
-        email=data['email'],
+        mobile=data['mobile'],
         name=data['name'],
         address=data['address'],
         dob=data['dob'],
@@ -176,7 +164,7 @@ def create_appointment(clinicName):
             "appointmentID": appointment.appointmentID,
             "clinicName": appointment.clinicName,
             "nric": appointment.nric,
-            "email": appointment.email,
+            "mobile": appointment.mobile,
             "name": appointment.name,
             "address": appointment.address,
             "dob": appointment.dob,

@@ -8,10 +8,10 @@ print()
 print( results )
 
 # invoke appointment_record microservice to create an appointment
-appointmentID = 5
+appointmentID = 3
 clinicName = 'Complete Hospital International'
 appointment_details = {
-            "appointmentID" : 5,
+            "appointmentID" : 3,
             "clinicName": "Complete Hospital International",
             "datetime": "2022-07-02 10:45:30",
             "name": "Margaret Lim",
@@ -21,7 +21,7 @@ appointment_details = {
             "nric": "S9650951A"
         }
 create_results = invoke_http(
-        "http://127.0.0.1:5000/appointment/" + str(appointmentID) + "/" + clinicName, method='POST', 
+        "http://127.0.0.1:5000/appointment/" + clinicName, method='POST', 
         json=appointment_details
     )
 
